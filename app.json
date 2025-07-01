@@ -1,7 +1,7 @@
 {
   "expo": {
     "name": "Chytrý Skleník",
-    "slug": "SmartStuff",
+    "slug": "chytrysklenik",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
@@ -13,7 +13,9 @@
     "updates": {
       "fallbackToCacheTimeout": 0
     },
-    "assetBundlePatterns": ["**/*"],
+    "assetBundlePatterns": [
+      "**/*"
+    ],
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "me.ganamaga.smartstuff.sklenik"
@@ -31,6 +33,13 @@
     "plugins": [
       "expo-router"
     ],
-    "entryPoint": "app/entry.js"
+    "entryPoint": "app/entry.js",
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "c44e6dc7-2fad-4b9e-ba60-70e534a809bd"
+      }
+    },
+    "owner": "ganamaga"
   }
 }

@@ -1,11 +1,15 @@
-import { View, Text, Switch, ScrollView, StyleSheet } from 'react-native';
+import { View, Text, Switch, ScrollView, StyleSheet, StatusBar, SafeAreaView } from 'react-native';
 import { useTheme } from './context/ThemeContext';
 import { useMqtt } from './context/MqttContext';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
+import * as Haptics from 'expo-haptics';
 import Section from './components/Section';
 import DataRow from './components/DataRow';
 import SettingControl from './components/SettingControl';
 import ConnectionStatus from './components/ConnectionStatus';
 import ManualControls from './components/ManualControls';
+import SwitchControl from './components/SwitchControl';
 
 export default function HomeScreen() {
     const { theme, isDarkMode, toggleTheme } = useTheme();
@@ -18,109 +22,147 @@ export default function HomeScreen() {
         setDevMode
     } = useMqtt();
 
-    return (
-        <ScrollView
-            style={[styles.container, { backgroundColor: theme.background }]}
-            contentContainerStyle={styles.contentContainer}
-        >
-            {/* Header */}
-            <View style={styles.header}>
-                <Text style={[styles.title, { color: theme.text }]}>Chytrý Skleník</Text>
+    const handleThemeToggle = () => {
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+        toggleTheme();
+    };
 
-                <View style={styles.themeContainer}>
-                    <Text style={[styles.themeLabel, { color: theme.text }]}>
-                        {isDarkMode ? 'Dark' : 'Light'}
-                    </Text>
-                    <Switch
-                        value={isDarkMode}
-                        onValueChange={toggleTheme}
-                        thumbColor={isDarkMode ? theme.switchThumb : theme.switchThumb}
-                        trackColor={{ false: theme.switchTrack, true: theme.switchTrack }}
+    return (
+        <SafeAreaView style={[styles.safeArea, { backgroundColor: theme.background }]}>
+            <StatusBar 
+                barStyle={isDarkMode ? 'light-content' : 'dark-content'} 
+                backgroundColor={theme.background}
+            />
+            <ScrollView
+                style={styles.container}
+                contentContainerStyle={styles.contentContainer}
+                showsVerticalScrollIndicator={false}
+            >
+                {/* Header */}
+                <View style={styles.header}>
+                    <View style={styles.titleContainer}>
+                        <MaterialCommunityIcons 
+                            name="greenhouse" 
+                            size={32} 
+                            color={theme.primary} 
+                            style={styles.titleIcon} 
+                        />
+                        <Text style={[styles.title, { color: theme.text }]}>Chytrý Skleník</Text>
+                    </View>
+
+                    <View style={[styles.themeContainer, { backgroundColor: theme.section, borderColor: theme.border }]}>
+                        <MaterialCommunityIcons 
+                            name={isDarkMode ? "weather-night" : "white-balance-sunny"} 
+                            size={20} 
+                            color={theme.primary} 
+                        />
+                        <Switch
+                            value={isDarkMode}
+                            onValueChange={handleThemeToggle}
+                            thumbColor={isDarkMode ? theme.primary : theme.switchThumb}
+                            trackColor={{ false: theme.switchTrack, true: theme.accent }}
+                            style={styles.themeSwitch}
+                        />
+                    </View>
+                </View>
+
+                {/* Connection Status */}
+                <ConnectionStatus status={connectionStatus} theme={theme} />
+
+                {/* Sensor Data */}
+                <Section title="Sensor Data" theme={theme} icon="chart-line">
+                    <DataRow
+                        label="Temperature"
+                        value={`${sensorData.temperature}°C`}
+                        theme={theme}
+                        icon="thermometer"
+                    />
+                    <DataRow
+                        label="Atmospheric Pressure"
+                        value={`${sensorData.pressure} hPa`}
+                        theme={theme}
+                        icon="gauge"
+                    />
+                    <DataRow
+                        label="Air Humidity"
+                        value={`${sensorData.humidity}%`}
+                        theme={theme}
+                        icon="water-percent"
+                    />
+                    <DataRow
+                        label="Ground Moisture"
+                        value={`${sensorData.moisture}%`}
+                        theme={theme}
+                        icon="water"
+                    />
+                    <DataRow
+                        label="Light Level"
+                        value={`${sensorData.light}%`}
+                        theme={theme}
+                        icon="brightness-6"
+                    />
+                </Section>
+
+                {/* Target Settings */}
+                <Section title="Target Settings" theme={theme} icon="tune">
+                    <SettingControl
+                        label="Temperature"
+                        value={targetSettings.temperature}
+                        onChange={(value) => setTargetSettings(prev => ({ ...prev, temperature: value }))}
+                        min={15}
+                        max={35}
+                        unit="°C"
+                        theme={theme}
+                        icon="thermometer"
+                    />
+                    <SettingControl
+                        label="Humidity"
+                        value={targetSettings.humidity}
+                        onChange={(value) => setTargetSettings(prev => ({ ...prev, humidity: value }))}
+                        min={20}
+                        max={80}
+                        unit="%"
+                        theme={theme}
+                        icon="water-percent"
+                    />
+                    <SettingControl
+                        label="Moisture"
+                        value={targetSettings.moisture}
+                        onChange={(value) => setTargetSettings(prev => ({ ...prev, moisture: value }))}
+                        min={20}
+                        max={80}
+                        unit="%"
+                        theme={theme}
+                        icon="water"
+                    />
+                </Section>
+
+                {/* Dev Mode Toggle */}
+                <View style={[styles.devModeContainer, { 
+                    backgroundColor: theme.section,
+                    shadowColor: theme.shadow,
+                    borderColor: theme.border
+                }]}>
+                    <SwitchControl
+                        label="Developer Mode"
+                        value={devMode}
+                        onValueChange={setDevMode}
+                        theme={theme}
+                        icon="developer-board"
                     />
                 </View>
-            </View>
 
-            {/* Connection Status */}
-            <ConnectionStatus status={connectionStatus} theme={theme} />
-
-            {/* Sensor Data */}
-            <Section title="Sensor Data" theme={theme}>
-                <DataRow
-                    label="Temperature"
-                    value={`${sensorData.temperature}°C`}
-                    theme={theme}
-                />
-                <DataRow
-                    label="Atmospheric Pressure"
-                    value={`${sensorData.pressure} hPa`}
-                    theme={theme}
-                />
-                <DataRow
-                    label="Air Humidity"
-                    value={`${sensorData.humidity}%`}
-                    theme={theme}
-                />
-                <DataRow
-                    label="Ground Moisture"
-                    value={`${sensorData.moisture}%`}
-                    theme={theme}
-                />
-                <DataRow
-                    label="Light Level"
-                    value={`${sensorData.light}%`}
-                    theme={theme}
-                />
-            </Section>
-
-            {/* Target Settings */}
-            <Section title="Target Settings" theme={theme}>
-                <SettingControl
-                    label="Temperature"
-                    value={targetSettings.temperature}
-                    onChange={(value) => setTargetSettings(prev => ({ ...prev, temperature: value }))}
-                    min={15}
-                    max={35}
-                    unit="°C"
-                    theme={theme}
-                />
-                <SettingControl
-                    label="Humidity"
-                    value={targetSettings.humidity}
-                    onChange={(value) => setTargetSettings(prev => ({ ...prev, humidity: value }))}
-                    min={20}
-                    max={80}
-                    unit="%"
-                    theme={theme}
-                />
-                <SettingControl
-                    label="Moisture"
-                    value={targetSettings.moisture}
-                    onChange={(value) => setTargetSettings(prev => ({ ...prev, moisture: value }))}
-                    min={20}
-                    max={80}
-                    unit="%"
-                    theme={theme}
-                />
-            </Section>
-
-            {/* Dev Mode Toggle */}
-            <View style={[styles.devModeContainer, { backgroundColor: theme.section }]}>
-                <Text style={[styles.devLabel, { color: theme.text }]}>Developer Mode</Text>
-                <Switch
-                    value={devMode}
-                    onValueChange={setDevMode}
-                    thumbColor={devMode ? theme.primary : theme.switchThumb}
-                    trackColor={{ false: theme.switchTrack, true: theme.primary }}
-                />
-            </View>
-
-            {/* Manual Controls (Dev Mode Only) */}
-            {devMode && <ManualControls theme={theme} />}
-        </ScrollView>
+                {/* Manual Controls (Dev Mode Only) */}
+                {devMode && <ManualControls theme={theme} />}
+            </ScrollView>
+        </SafeAreaView>
     );
 }
 
 const styles = StyleSheet.create({
+    safeArea: {
+        flex: 1,
+    },
     container: {
         flex: 1,
     },
@@ -133,30 +175,40 @@ const styles = StyleSheet.create({
         justifyContent: 'space-between',
         alignItems: 'center',
         marginBottom: 20,
+        paddingVertical: 8,
+    },
+    titleContainer: {
+        flexDirection: 'row',
+        alignItems: 'center',
+    },
+    titleIcon: {
+        marginRight: 8,
     },
     title: {
         fontSize: 24,
         fontWeight: 'bold',
-        flex: 1,
     },
     themeContainer: {
         flexDirection: 'row',
         alignItems: 'center',
+        backgroundColor: 'rgba(0,0,0,0.03)',
+        paddingHorizontal: 10,
+        paddingVertical: 6,
+        borderRadius: 20,
+        borderWidth: 0.5,
     },
-    themeLabel: {
-        marginRight: 8,
-        fontSize: 16,
+    themeSwitch: {
+        transform: [{ scaleX: 0.8 }, { scaleY: 0.8 }],
+        marginLeft: 4,
     },
     devModeContainer: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        padding: 16,
-        borderRadius: 10,
+        borderRadius: 12,
         marginBottom: 20,
-    },
-    devLabel: {
-        fontSize: 16,
-        fontWeight: '500',
+        overflow: 'hidden',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.8,
+        shadowRadius: 4,
+        elevation: 5,
+        borderWidth: 0.5,
     },
 });
