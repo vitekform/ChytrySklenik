@@ -1,5 +1,10 @@
 import React, {createContext, useState, useEffect, useCallback, useContext} from 'react';
 import mqtt from 'mqtt/dist/mqtt';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+
+// Storage keys
+const TARGET_SETTINGS_KEY = '@ChytrySklenik:targetSettings';
+const MANUAL_CONTROLS_KEY = '@ChytrySklenik:manualControls';
 
 export const MqttContext = createContext();
 
@@ -14,6 +19,8 @@ export const useMqtt = () => {
 export function MqttProvider({ children }) {
     const [client, setClient] = useState(null);
     const [connectionStatus, setConnectionStatus] = useState('Disconnected');
+    const [lastMessageTime, setLastMessageTime] = useState(null);
+    const [controllerStatus, setControllerStatus] = useState('Offline');
     const [sensorData, setSensorData] = useState({
         temperature: 0,
         pressure: 0,
@@ -32,9 +39,12 @@ export function MqttProvider({ children }) {
         heating: false,
         lightLevel: 50
     });
+    const [autoMode, setAutoMode] = useState(true);
     const [devMode, setDevMode] = useState(false);
+    const [isLoading, setIsLoading] = useState(true);
 
     // MQTT Configuration (matches Arduino)
+    // Note: Arduino uses direct MQTT on port 8883, but React Native needs WebSockets
     const MQTT_BROKER = 'wss://b4aab6512bbd4adc8bcf3981fe64f1dc.s1.eu.hivemq.cloud:8884/mqtt';
     const MQTT_OPTIONS = {
         username: 'sklenik',
@@ -56,6 +66,10 @@ export function MqttProvider({ children }) {
             try {
                 const data = JSON.parse(message.toString());
 
+                // Update last message time and set controller as online
+                setLastMessageTime(Date.now());
+                setControllerStatus('Online');
+
                 // Handle sensor data updates
                 if (data.temp !== undefined) {
                     setSensorData({
@@ -65,6 +79,19 @@ export function MqttProvider({ children }) {
                         moisture: data.moisture || 0,
                         light: data.light || 0
                     });
+
+                    // Update device states and auto mode from Arduino
+                    if (data.autoMode !== undefined) {
+                        setAutoMode(data.autoMode);
+                    }
+
+                    // Update manual controls to reflect actual device states
+                    setManualControls(prev => ({
+                        ...prev,
+                        fan: data.fanActive || false,
+                        waterPump: data.pumpActive || false,
+                        heating: data.heaterActive || false
+                    }));
                 }
             } catch (error) {
                 console.error('MQTT message parse error:', error);
@@ -101,15 +128,29 @@ export function MqttProvider({ children }) {
                     type: 'settings',
                     targetTemp: targetSettings.temperature,
                     targetHumidity: targetSettings.humidity,
-                    targetMoisture: targetSettings.moisture
+                    targetMoisture: targetSettings.moisture,
+                    autoMode: autoMode
                 })
             );
         }
-    }, [client, targetSettings]);
+    }, [client, targetSettings, autoMode]);
+
+    // Publish auto mode change
+    const publishAutoMode = useCallback(() => {
+        if (client && client.connected) {
+            client.publish(
+                'sklenik/sensor',
+                JSON.stringify({
+                    type: 'settings',
+                    autoMode: autoMode
+                })
+            );
+        }
+    }, [client, autoMode]);
 
     // Publish manual controls
     const publishManualControls = useCallback(() => {
-        if (client && client.connected && devMode) {
+        if (client && client.connected) {
             client.publish(
                 'sklenik/sensor',
                 JSON.stringify({
@@ -121,7 +162,7 @@ export function MqttProvider({ children }) {
                 })
             );
         }
-    }, [client, manualControls, devMode]);
+    }, [client, manualControls]);
 
     // Connect on mount
     useEffect(() => {
@@ -133,22 +174,101 @@ export function MqttProvider({ children }) {
         publishSettings();
     }, [targetSettings, publishSettings]);
 
-    // Publish when manual controls change
+    // We no longer automatically publish manual controls when they change
+    // This will be done explicitly via the Sync button
+
+    // Check if controller is offline (no message for more than 1 minute)
     useEffect(() => {
-        publishManualControls();
-    }, [manualControls, publishManualControls]);
+        const checkControllerStatus = () => {
+            if (lastMessageTime) {
+                const currentTime = Date.now();
+                const timeSinceLastMessage = currentTime - lastMessageTime;
+
+                // If last message was more than 1 minute ago, set controller as offline
+                if (timeSinceLastMessage > 60000) { // 60000 ms = 1 minute
+                    setControllerStatus('Offline');
+                }
+            }
+        };
+
+        // Check controller status every 10 seconds
+        const intervalId = setInterval(checkControllerStatus, 10000);
+
+        // Clean up interval on unmount
+        return () => clearInterval(intervalId);
+    }, [lastMessageTime]);
+
+    // Load saved settings on mount
+    useEffect(() => {
+        const loadSavedSettings = async () => {
+            try {
+                // Load target settings
+                const savedTargetSettings = await AsyncStorage.getItem(TARGET_SETTINGS_KEY);
+                if (savedTargetSettings !== null) {
+                    setTargetSettings(JSON.parse(savedTargetSettings));
+                }
+
+                // Load manual controls
+                const savedManualControls = await AsyncStorage.getItem(MANUAL_CONTROLS_KEY);
+                if (savedManualControls !== null) {
+                    setManualControls(JSON.parse(savedManualControls));
+                }
+            } catch (error) {
+                console.error('Failed to load saved settings:', error);
+            } finally {
+                setIsLoading(false);
+            }
+        };
+
+        loadSavedSettings();
+    }, []);
+
+    // Save target settings when they change
+    useEffect(() => {
+        const saveTargetSettings = async () => {
+            try {
+                await AsyncStorage.setItem(TARGET_SETTINGS_KEY, JSON.stringify(targetSettings));
+            } catch (error) {
+                console.error('Failed to save target settings:', error);
+            }
+        };
+
+        if (!isLoading) {
+            saveTargetSettings();
+        }
+    }, [targetSettings, isLoading]);
+
+    // Save manual controls when they change
+    useEffect(() => {
+        const saveManualControls = async () => {
+            try {
+                await AsyncStorage.setItem(MANUAL_CONTROLS_KEY, JSON.stringify(manualControls));
+            } catch (error) {
+                console.error('Failed to save manual controls:', error);
+            }
+        };
+
+        if (!isLoading) {
+            saveManualControls();
+        }
+    }, [manualControls, isLoading]);
 
     return (
         <MqttContext.Provider value={{
             client,
             connectionStatus,
+            controllerStatus,
             sensorData,
             targetSettings,
             setTargetSettings,
             manualControls,
             setManualControls,
+            autoMode,
+            setAutoMode,
+            publishAutoMode,
             devMode,
-            setDevMode
+            setDevMode,
+            publishManualControls
         }}>
             {children}
         </MqttContext.Provider>

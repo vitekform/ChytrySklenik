@@ -1,9 +1,10 @@
-import { View, Text, Switch, ScrollView, StyleSheet, StatusBar, SafeAreaView } from 'react-native';
+import { View, Text, Switch, ScrollView, StyleSheet, StatusBar, SafeAreaView, TouchableOpacity } from 'react-native';
 import { useTheme } from './context/ThemeContext';
 import { useMqtt } from './context/MqttContext';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as Haptics from 'expo-haptics';
+import { Link } from 'expo-router';
 import Section from './components/Section';
 import DataRow from './components/DataRow';
 import SettingControl from './components/SettingControl';
@@ -50,19 +51,21 @@ export default function HomeScreen() {
                         <Text style={[styles.title, { color: theme.text }]}>Chytrý Skleník</Text>
                     </View>
 
-                    <View style={[styles.themeContainer, { backgroundColor: theme.section, borderColor: theme.border }]}>
-                        <MaterialCommunityIcons 
-                            name={isDarkMode ? "weather-night" : "white-balance-sunny"} 
-                            size={20} 
-                            color={theme.primary} 
-                        />
-                        <Switch
-                            value={isDarkMode}
-                            onValueChange={handleThemeToggle}
-                            thumbColor={isDarkMode ? theme.primary : theme.switchThumb}
-                            trackColor={{ false: theme.switchTrack, true: theme.accent }}
-                            style={styles.themeSwitch}
-                        />
+                    <View style={styles.headerControls}>
+                        <View style={[styles.themeContainer, { backgroundColor: theme.section, borderColor: theme.border }]}>
+                            <MaterialCommunityIcons 
+                                name={isDarkMode ? "weather-night" : "white-balance-sunny"} 
+                                size={20} 
+                                color={theme.primary} 
+                            />
+                            <Switch
+                                value={isDarkMode}
+                                onValueChange={handleThemeToggle}
+                                thumbColor={isDarkMode ? theme.primary : theme.switchThumb}
+                                trackColor={{ false: theme.switchTrack, true: theme.accent }}
+                                style={styles.themeSwitch}
+                            />
+                        </View>
                     </View>
                 </View>
 
@@ -187,6 +190,24 @@ const styles = StyleSheet.create({
     title: {
         fontSize: 24,
         fontWeight: 'bold',
+    },
+    headerControls: {
+        flexDirection: 'row',
+        alignItems: 'center',
+    },
+    graphsButton: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingHorizontal: 12,
+        paddingVertical: 8,
+        borderRadius: 20,
+        marginRight: 10,
+    },
+    graphsButtonText: {
+        color: '#FFFFFF',
+        fontWeight: 'bold',
+        marginLeft: 4,
+        fontSize: 14,
     },
     themeContainer: {
         flexDirection: 'row',

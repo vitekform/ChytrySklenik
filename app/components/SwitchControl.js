@@ -3,8 +3,9 @@ import { View, Text, Switch, StyleSheet, Pressable } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 
-export default function SwitchControl({ label, value, onValueChange, theme, icon }) {
+export default function SwitchControl({ label, value, onValueChange, theme, icon, disabled = false }) {
     const handlePress = () => {
+        if (disabled) return;
         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
         onValueChange(!value);
     };
@@ -12,11 +13,13 @@ export default function SwitchControl({ label, value, onValueChange, theme, icon
     return (
         <Pressable 
             onPress={handlePress}
+            disabled={disabled}
             style={({ pressed }) => [
                 styles.container, 
                 { 
                     borderBottomColor: theme.border,
                     backgroundColor: pressed ? 'rgba(0,0,0,0.03)' : 'transparent',
+                    opacity: disabled ? 0.6 : 1,
                 }
             ]}
         >
@@ -44,6 +47,7 @@ export default function SwitchControl({ label, value, onValueChange, theme, icon
                 <Switch
                     value={value}
                     onValueChange={(newValue) => {
+                        if (disabled) return;
                         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
                         onValueChange(newValue);
                     }}
@@ -51,6 +55,7 @@ export default function SwitchControl({ label, value, onValueChange, theme, icon
                     trackColor={{ false: theme.switchTrack, true: theme.accent }}
                     ios_backgroundColor={theme.switchTrack}
                     style={styles.switch}
+                    disabled={disabled}
                 />
             </View>
         </Pressable>

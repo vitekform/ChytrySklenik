@@ -16,9 +16,11 @@ export default function SliderControl({
 }) {
     const [isSliding, setIsSliding] = useState(false);
     const [scaleAnim] = useState(new Animated.Value(1));
+    const [tempValue, setTempValue] = useState(value);
 
     const handleSlidingStart = () => {
         setIsSliding(true);
+        setTempValue(value);
         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
         Animated.spring(scaleAnim, {
             toValue: 1.05,
@@ -31,12 +33,18 @@ export default function SliderControl({
     const handleSlidingComplete = () => {
         setIsSliding(false);
         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+        // Only call onValueChange when sliding is complete
+        onValueChange(tempValue);
         Animated.spring(scaleAnim, {
             toValue: 1,
             friction: 5,
             tension: 40,
             useNativeDriver: true
         }).start();
+    };
+
+    const handleValueChange = (newValue) => {
+        setTempValue(newValue);
     };
 
     return (
@@ -70,14 +78,14 @@ export default function SliderControl({
                             color: isSliding ? theme.section : theme.primary 
                         }
                     ]}>
-                        {value}{unit}
+                        {isSliding ? tempValue : value}{unit}
                     </Text>
                 </View>
             </View>
             <View style={styles.sliderContainer}>
                 <Slider
-                    value={value}
-                    onValueChange={onValueChange}
+                    value={isSliding ? tempValue : value}
+                    onValueChange={handleValueChange}
                     onSlidingStart={handleSlidingStart}
                     onSlidingComplete={handleSlidingComplete}
                     minimumValue={min}
